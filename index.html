@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neon Trivia — Quiz Interaktif</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-0:#0b1220;
+    --bg-1:#121b30;
+    --bg-2:#182544;
+    --card:#16213d;
+    --card-border:#243258;
+    --ink:#eef1fb;
+    --ink-dim:#93a0c2;
+    --gold:#f2c14e;
+    --teal:#2ec4b6;
+    --teal-dim:#1a8f84;
+    --correct:#1fd18f;
+    --correct-bg:#0f3d31;
+    --wrong:#ff5d73;
+    --wrong-bg:#3d1420;
+    --radius:18px;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:32px 16px;
+    background:
+      radial-gradient(circle at 15% 10%, rgba(46,196,182,0.16), transparent 45%),
+      radial-gradient(circle at 85% 90%, rgba(242,193,78,0.12), transparent 40%),
+      linear-gradient(180deg, var(--bg-0), var(--bg-1) 55%, var(--bg-2));
+    font-family:'Inter', system-ui, sans-serif;
+    color:var(--ink);
+  }
+
+  .app{
+    width:100%;
+    max-width:640px;
+  }
+
+  .brand{
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+    justify-content:center;
+    margin-bottom:22px;
+  }
+  .brand .mark{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700;
+    font-size:15px;
+    letter-spacing:0.02em;
+    color:var(--gold);
+    border:1px solid rgba(242,193,78,0.4);
+    border-radius:999px;
+    padding:4px 12px;
+  }
+  .brand .name{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:600;
+    font-size:15px;
+    color:var(--ink-dim);
+  }
+
+  .panel{
+    background:linear-gradient(180deg, var(--card), rgba(22,33,61,0.85));
+    border:1px solid var(--card-border);
+    border-radius:var(--radius);
+    padding:40px 36px;
+    box-shadow:0 30px 60px -25px rgba(0,0,0,0.6);
+    position:relative;
+    overflow:hidden;
+  }
+  .panel::before{
+    content:"";
+    position:absolute;
+    top:-60%; left:-20%;
+    width:60%; height:220%;
+    background:linear-gradient(120deg, rgba(46,196,182,0.08), transparent 60%);
+    pointer-events:none;
+  }
+
+  /* ---------- Screen switching (SPA pattern, no reload) ---------- */
+  .screen{ display:none; }
+  .screen.active{ display:block; animation:fadeSlide 0.4s ease; }
+  @keyframes fadeSlide{
+    from{ opacity:0; transform:translateY(10px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+
+  /* ---------- Start screen ---------- */
+  h1.title{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:clamp(28px, 5vw, 36px);
+    line-height:1.15;
+    margin:0 0 12px;
+  }
+  h1.title span{ color:var(--teal); }
+  .lede{
+    color:var(--ink-dim);
+    font-size:15.5px;
+    line-height:1.6;
+    margin:0 0 28px;
+    max-width:46ch;
+  }
+  .stat-row{
+    display:flex;
+    gap:12px;
+    margin-bottom:28px;
+    flex-wrap:wrap;
+  }
+  .stat-box{
+    flex:1;
+    min-width:130px;
+    background:rgba(255,255,255,0.03);
+    border:1px solid var(--card-border);
+    border-radius:12px;
+    padding:14px 16px;
+  }
+  .stat-box .label{
+    font-size:12px;
+    color:var(--ink-dim);
+    margin-bottom:4px;
+  }
+  .stat-box .value{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:22px;
+    font-weight:600;
+    color:var(--gold);
+  }
+
+  .btn{
+    appearance:none;
+    border:none;
+    cursor:pointer;
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:600;
+    font-size:16px;
+    border-radius:12px;
+    padding:14px 26px;
+    transition:transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  }
+  .btn:focus-visible{
+    outline:2px solid var(--gold);
+    outline-offset:3px;
+  }
+  .btn-primary{
+    background:linear-gradient(135deg, var(--teal), var(--teal-dim));
+    color:#04231f;
+    box-shadow:0 12px 24px -10px rgba(46,196,182,0.55);
+  }
+  .btn-primary:hover{ transform:translateY(-2px); }
+  .btn-ghost{
+    background:transparent;
+    color:var(--ink);
+    border:1px solid var(--card-border);
+  }
+  .btn-ghost:hover{ background:rgba(255,255,255,0.05); }
+
+  /* ---------- Quiz screen ---------- */
+  .quiz-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:14px;
+    gap:12px;
+  }
+  .q-counter{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:13px;
+    color:var(--ink-dim);
+    letter-spacing:0.02em;
+  }
+  .q-score{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:13px;
+    color:var(--gold);
+  }
+
+  .progress-track{
+    height:6px;
+    border-radius:999px;
+    background:rgba(255,255,255,0.08);
+    overflow:hidden;
+    margin-bottom:8px;
+  }
+  .progress-fill{
+    height:100%;
+    background:linear-gradient(90deg, var(--teal), var(--gold));
+    border-radius:999px;
+    transition:width 0.35s ease;
+  }
+
+  .timer-track{
+    height:4px;
+    border-radius:999px;
+    background:rgba(255,255,255,0.06);
+    overflow:hidden;
+    margin-bottom:26px;
+  }
+  .timer-fill{
+    height:100%;
+    background:var(--wrong);
+    width:100%;
+    transform-origin:left;
+  }
+
+  .category-tag{
+    display:inline-block;
+    font-size:12px;
+    font-weight:600;
+    color:var(--teal);
+    background:rgba(46,196,182,0.12);
+    border:1px solid rgba(46,196,182,0.3);
+    padding:4px 10px;
+    border-radius:999px;
+    margin-bottom:14px;
+  }
+
+  .q-text{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:clamp(19px, 3.4vw, 23px);
+    line-height:1.4;
+    margin:0 0 22px;
+  }
+
+  .answers{
+    display:grid;
+    gap:12px;
+  }
+  .answer-btn{
+    text-align:left;
+    display:flex;
+    align-items:center;
+    gap:12px;
+    background:rgba(255,255,255,0.03);
+    border:1px solid var(--card-border);
+    border-radius:12px;
+    padding:14px 16px;
+    color:var(--ink);
+    font-family:'Inter', sans-serif;
+    font-size:15px;
+    cursor:pointer;
+    transition:border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+  }
+  .answer-btn:hover:not(:disabled){
+    border-color:var(--teal);
+    background:rgba(46,196,182,0.08);
+  }
+  .answer-btn:focus-visible{
+    outline:2px solid var(--gold);
+    outline-offset:2px;
+  }
+  .answer-btn .letter{
+    flex:0 0 auto;
+    width:26px; height:26px;
+    border-radius:8px;
+    background:rgba(255,255,255,0.06);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Space Grotesk', sans-serif;
+    font-size:12.5px;
+    font-weight:600;
+    color:var(--ink-dim);
+  }
+  .answer-btn:disabled{ cursor:default; }
+
+  .answer-btn.correct{
+    border-color:var(--correct);
+    background:var(--correct-bg);
+  }
+  .answer-btn.correct .letter{
+    background:var(--correct);
+    color:#04231f;
+  }
+  .answer-btn.wrong{
+    border-color:var(--wrong);
+    background:var(--wrong-bg);
+    animation:shake 0.3s ease;
+  }
+  .answer-btn.wrong .letter{
+    background:var(--wrong);
+    color:#2a0209;
+  }
+  @keyframes shake{
+    0%,100%{ transform:translateX(0); }
+    25%{ transform:translateX(-4px); }
+    75%{ transform:translateX(4px); }
+  }
+
+  /* ---------- Result screen ---------- */
+  .result-top{
+    text-align:center;
+    margin-bottom:28px;
+  }
+  .result-emoji{ font-size:44px; margin-bottom:10px; }
+  .result-score{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:52px;
+    font-weight:700;
+    color:var(--gold);
+    line-height:1;
+  }
+  .result-score span{ font-size:20px; color:var(--ink-dim); font-weight:500; }
+  .result-msg{
+    color:var(--ink-dim);
+    font-size:15px;
+    margin-top:10px;
+  }
+  .newbest{
+    display:inline-block;
+    margin-top:12px;
+    font-size:12.5px;
+    font-weight:600;
+    color:#04231f;
+    background:var(--gold);
+    padding:5px 12px;
+    border-radius:999px;
+  }
+  .result-actions{
+    display:flex;
+    gap:12px;
+    margin-top:26px;
+    flex-wrap:wrap;
+  }
+  .result-actions .btn{ flex:1; min-width:150px; }
+
+  .breakdown{
+    margin-top:26px;
+    border-top:1px solid var(--card-border);
+    padding-top:18px;
+  }
+  .breakdown-item{
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    font-size:13.5px;
+    color:var(--ink-dim);
+    padding:7px 0;
+  }
+  .breakdown-item .tick{
+    flex:0 0 auto;
+    width:18px; height:18px;
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:11px;
+    font-weight:700;
+    margin-top:1px;
+  }
+  .breakdown-item .tick.ok{ background:var(--correct-bg); color:var(--correct); }
+  .breakdown-item .tick.no{ background:var(--wrong-bg); color:var(--wrong); }
+
+  .toggle-mode{
+    position:absolute;
+    top:18px;
+    right:18px;
+    background:transparent;
+    border:1px solid var(--card-border);
+    color:var(--ink-dim);
+    border-radius:999px;
+    width:36px; height:36px;
+    cursor:pointer;
+    font-size:15px;
+    display:flex; align-items:center; justify-content:center;
+  }
+
+  body.light{
+    --bg-0:#f4f1ea;
+    --bg-1:#ece6da;
+    --bg-2:#e2dac9;
+    --card:#fffdf8;
+    --card-border:#e2dac9;
+    --ink:#1c1a15;
+    --ink-dim:#6b6455;
+    --correct-bg:#e2f8ee;
+    --wrong-bg:#fde7ea;
+  }
+
+  @media (max-width:480px){
+    .panel{ padding:28px 20px; }
+    .result-actions{ flex-direction:column; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .screen.active, .answer-btn.wrong{ animation:none; }
+    .btn-primary:hover{ transform:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="brand">
+    <span class="mark">QUIZ</span>
+    <span class="name">Neon Trivia</span>
+  </div>
+
+  <div class="panel">
+    <button class="toggle-mode" id="modeToggle" title="Ganti tampilan" aria-label="Ganti mode terang/gelap">🌙</button>
+
+    <!-- START SCREEN -->
+    <section class="screen active" id="screen-start">
+      <h1 class="title">Seberapa tajam <span>wawasanmu?</span></h1>
+      <p class="lede">10 pertanyaan yang diacak dari kumpulan soal sains, sejarah, geografi, teknologi, olahraga, seni budaya, dan bahasa. Setiap main, soalnya beda-beda. Setiap soal punya batas waktu 15 detik, jadi mikirnya jangan lama-lama.</p>
+
+      <div class="stat-row">
+        <div class="stat-box">
+          <div class="label">High Score</div>
+          <div class="value" id="highScoreDisplay">0 / 8</div>
+        </div>
+        <div class="stat-box">
+          <div class="label">Total Soal</div>
+          <div class="value">10</div>
+        </div>
+        <div class="stat-box">
+          <div class="label">Waktu / Soal</div>
+          <div class="value">15s</div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="startBtn">Mulai Quiz →</button>
+    </section>
+
+    <!-- QUIZ SCREEN -->
+    <section class="screen" id="screen-quiz">
+      <div class="quiz-head">
+        <span class="q-counter" id="qCounter">Soal 1 / 8</span>
+        <span class="q-score" id="qScore">Skor: 0</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="timer-track"><div class="timer-fill" id="timerFill"></div></div>
+
+      <span class="category-tag" id="categoryTag">Kategori</span>
+      <h2 class="q-text" id="questionText"></h2>
+
+      <div class="answers" id="answersContainer"></div>
+    </section>
+
+    <!-- RESULT SCREEN -->
+    <section class="screen" id="screen-result">
+      <div class="result-top">
+        <div class="result-emoji" id="resultEmoji">🎉</div>
+        <div class="result-score"><span id="finalScore">0</span><span> / 10</span></div>
+        <div class="result-msg" id="resultMsg">Lumayan!</div>
+        <div id="newBestBadge" style="display:none;" class="newbest">🏆 Rekor baru!</div>
+      </div>
+
+      <div class="result-actions">
+        <button class="btn btn-primary" id="restartBtn">Main Lagi</button>
+      </div>
+
+      <div class="breakdown" id="breakdown"></div>
+    </section>
+
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const QUESTION_BANK = [
+    // ---------- Geografi ----------
+    { category: "Geografi", question: "Sungai terpanjang di dunia adalah?", options: ["Sungai Amazon", "Sungai Nil", "Sungai Yangtze", "Sungai Mississippi"], correct: 1 },
+    { category: "Geografi", question: "Gunung tertinggi di dunia adalah?", options: ["K2", "Gunung Kilimanjaro", "Gunung Everest", "Gunung Fuji"], correct: 2 },
+    { category: "Geografi", question: "Negara dengan jumlah pulau terbanyak di dunia adalah?", options: ["Filipina", "Jepang", "Indonesia", "Norwegia"], correct: 2 },
+    { category: "Geografi", question: "Ibu kota negara Australia adalah?", options: ["Sydney", "Melbourne", "Canberra", "Perth"], correct: 2 },
+    { category: "Geografi", question: "Gurun terluas di dunia adalah?", options: ["Gurun Gobi", "Gurun Sahara", "Gurun Kalahari", "Gurun Antartika"], correct: 3 },
+    { category: "Geografi", question: "Danau terbesar di dunia berdasarkan luas permukaan adalah?", options: ["Danau Victoria", "Danau Superior", "Laut Kaspia", "Danau Baikal"], correct: 2 },
+    { category: "Geografi", question: "Selat yang memisahkan Pulau Sumatra dan Pulau Jawa adalah?", options: ["Selat Malaka", "Selat Sunda", "Selat Karimata", "Selat Bali"], correct: 1 },
+    { category: "Geografi", question: "Benua terkecil di dunia adalah?", options: ["Eropa", "Australia", "Antartika", "Amerika Selatan"], correct: 1 },
+    { category: "Geografi", question: "Kota Machu Picchu terletak di negara?", options: ["Meksiko", "Brasil", "Peru", "Kolombia"], correct: 2 },
+    { category: "Geografi", question: "Provinsi paling barat di Indonesia adalah?", options: ["Sumatra Utara", "Aceh", "Riau", "Bengkulu"], correct: 1 },
+    { category: "Geografi", question: "Sungai Nil bermuara ke laut apa?", options: ["Laut Merah", "Laut Mediterania", "Laut Arab", "Laut Hitam"], correct: 1 },
+    { category: "Geografi", question: "Negara yang dijuluki 'Negeri Kincir Angin' adalah?", options: ["Denmark", "Belgia", "Belanda", "Swedia"], correct: 2 },
+
+    // ---------- Sains ----------
+    { category: "Sains", question: "Planet apa yang dijuluki 'Planet Merah'?", options: ["Venus", "Jupiter", "Mars", "Saturnus"], correct: 2 },
+    { category: "Sains", question: "Unsur kimia dengan simbol 'O' adalah?", options: ["Emas", "Oksigen", "Perak", "Osmium"], correct: 1 },
+    { category: "Sains", question: "Bagian sel yang berfungsi sebagai 'pembangkit energi' disebut?", options: ["Nukleus", "Ribosom", "Mitokondria", "Membran sel"], correct: 2 },
+    { category: "Sains", question: "Kecepatan cahaya di ruang hampa kira-kira?", options: ["300.000 km/detik", "150.000 km/detik", "1.000.000 km/detik", "30.000 km/detik"], correct: 0 },
+    { category: "Sains", question: "Gas yang paling banyak menyusun atmosfer bumi adalah?", options: ["Oksigen", "Karbon dioksida", "Nitrogen", "Hidrogen"], correct: 2 },
+    { category: "Sains", question: "Hewan yang bernapas menggunakan insang sepanjang hidupnya disebut?", options: ["Amfibi", "Reptil", "Ikan", "Mamalia laut"], correct: 2 },
+    { category: "Sains", question: "Proses tumbuhan mengubah cahaya matahari menjadi energi disebut?", options: ["Respirasi", "Fotosintesis", "Transpirasi", "Fermentasi"], correct: 1 },
+    { category: "Sains", question: "Ilmuwan yang mencetuskan teori relativitas adalah?", options: ["Isaac Newton", "Nikola Tesla", "Albert Einstein", "Galileo Galilei"], correct: 2 },
+    { category: "Sains", question: "Organ tubuh manusia yang berfungsi memompa darah adalah?", options: ["Paru-paru", "Hati", "Jantung", "Ginjal"], correct: 2 },
+    { category: "Sains", question: "Satuan SI untuk mengukur gaya adalah?", options: ["Joule", "Newton", "Watt", "Pascal"], correct: 1 },
+    { category: "Sains", question: "Air murni memiliki pH sekitar?", options: ["3", "5", "7", "9"], correct: 2 },
+    { category: "Sains", question: "Planet terbesar di tata surya adalah?", options: ["Saturnus", "Uranus", "Jupiter", "Neptunus"], correct: 2 },
+    { category: "Sains", question: "Vitamin yang diproduksi tubuh saat terkena sinar matahari adalah?", options: ["Vitamin A", "Vitamin C", "Vitamin D", "Vitamin K"], correct: 2 },
+
+    // ---------- Sejarah ----------
+    { category: "Sejarah", question: "Proklamasi kemerdekaan Indonesia dibacakan pada tanggal?", options: ["17 Agustus 1945", "10 November 1945", "1 Juni 1945", "28 Oktober 1928"], correct: 0 },
+    { category: "Sejarah", question: "Candi Borobudur terletak di provinsi?", options: ["Jawa Barat", "Jawa Timur", "Yogyakarta", "Jawa Tengah"], correct: 3 },
+    { category: "Sejarah", question: "Sumpah Pemuda dikumandangkan pada tahun?", options: ["1908", "1928", "1945", "1965"], correct: 1 },
+    { category: "Sejarah", question: "Perang Dunia II berakhir pada tahun?", options: ["1943", "1944", "1945", "1946"], correct: 2 },
+    { category: "Sejarah", question: "Presiden pertama Republik Indonesia adalah?", options: ["Soeharto", "Soekarno", "B.J. Habibie", "Mohammad Hatta"], correct: 1 },
+    { category: "Sejarah", question: "Tembok Besar Tiongkok dibangun terutama untuk tujuan?", options: ["Menandai batas wilayah", "Menahan serangan musuh", "Jalur perdagangan", "Tempat wisata"], correct: 1 },
+    { category: "Sejarah", question: "Piramida Giza terletak di negara?", options: ["Meksiko", "Mesir", "Sudan", "Yordania"], correct: 1 },
+    { category: "Sejarah", question: "Kerajaan maritim terbesar di Nusantara pada masanya adalah?", options: ["Majapahit", "Sriwijaya", "Mataram Kuno", "Demak"], correct: 1 },
+    { category: "Sejarah", question: "Organisasi pergerakan nasional pertama di Indonesia adalah?", options: ["Budi Utomo", "Sarekat Islam", "Indische Partij", "Perhimpunan Indonesia"], correct: 0 },
+    { category: "Sejarah", question: "Tembok Berlin runtuh pada tahun?", options: ["1985", "1989", "1991", "1995"], correct: 1 },
+
+    // ---------- Teknologi ----------
+    { category: "Teknologi", question: "Apa kepanjangan dari 'HTTP'?", options: ["HyperText Transfer Protocol", "High Transfer Text Protocol", "HyperText Technical Process", "Home Tool Transfer Program"], correct: 0 },
+    { category: "Teknologi", question: "Bahasa pemrograman apa yang identik dengan pengembangan web di sisi browser?", options: ["Python", "JavaScript", "Swift", "Kotlin"], correct: 1 },
+    { category: "Teknologi", question: "Apa kepanjangan dari 'CPU'?", options: ["Central Processing Unit", "Computer Personal Unit", "Central Program Utility", "Core Processing Unifier"], correct: 0 },
+    { category: "Teknologi", question: "Siapa pendiri Microsoft?", options: ["Steve Jobs", "Bill Gates", "Mark Zuckerberg", "Elon Musk"], correct: 1 },
+    { category: "Teknologi", question: "Format gambar yang mendukung transparansi adalah?", options: ["JPEG", "BMP", "PNG", "TIFF"], correct: 2 },
+    { category: "Teknologi", question: "Apa kepanjangan dari 'URL'?", options: ["Uniform Resource Locator", "Universal Retrieval Link", "United Resource Language", "Unified Router Locator"], correct: 0 },
+    { category: "Teknologi", question: "Sistem operasi open-source yang banyak dipakai untuk server adalah?", options: ["Windows", "macOS", "Linux", "iOS"], correct: 2 },
+    { category: "Teknologi", question: "Bahasa markup yang digunakan untuk menyusun struktur halaman web adalah?", options: ["CSS", "HTML", "SQL", "JSON"], correct: 1 },
+    { category: "Teknologi", question: "Perusahaan yang mengembangkan sistem operasi Android adalah?", options: ["Apple", "Google", "Samsung", "Microsoft"], correct: 1 },
+    { category: "Teknologi", question: "Apa fungsi utama dari 'localStorage' di browser?", options: ["Mengirim email", "Menyimpan data secara lokal di perangkat", "Mempercepat koneksi internet", "Menjalankan animasi"], correct: 1 },
+
+    // ---------- Olahraga ----------
+    { category: "Olahraga", question: "Piala Dunia FIFA diselenggarakan setiap berapa tahun sekali?", options: ["2 tahun", "3 tahun", "4 tahun", "5 tahun"], correct: 2 },
+    { category: "Olahraga", question: "Cabang olahraga bulu tangkis dikenal juga dengan istilah?", options: ["Tenis meja", "Badminton", "Squash", "Softball"], correct: 1 },
+    { category: "Olahraga", question: "Negara yang menjadi tuan rumah Olimpiade musim panas 2020 (ditunda ke 2021) adalah?", options: ["China", "Jepang", "Prancis", "Brasil"], correct: 1 },
+    { category: "Olahraga", question: "Jumlah pemain dalam satu tim sepak bola di lapangan adalah?", options: ["9 pemain", "10 pemain", "11 pemain", "12 pemain"], correct: 2 },
+    { category: "Olahraga", question: "Olahraga yang menggunakan istilah 'smash' dan 'love' adalah?", options: ["Bulu tangkis", "Tenis", "Voli", "Basket"], correct: 1 },
+    { category: "Olahraga", question: "Indonesia pertama kali menjadi juara Piala Thomas pada tahun?", options: ["1958", "1970", "1984", "1992"], correct: 0 },
+    { category: "Olahraga", question: "Cabang olahraga yang dipertandingkan di atas papan dengan roda disebut?", options: ["Skateboard", "Surfing", "Snowboarding", "Skating"], correct: 0 },
+    { category: "Olahraga", question: "Induk organisasi sepak bola dunia adalah?", options: ["IOC", "FIFA", "UEFA", "AFC"], correct: 1 },
+
+    // ---------- Seni & Budaya ----------
+    { category: "Seni & Budaya", question: "Alat musik tradisional dari Jawa Barat yang terbuat dari bambu adalah?", options: ["Sasando", "Angklung", "Kolintang", "Gamelan"], correct: 1 },
+    { category: "Seni & Budaya", question: "Tari Kecak berasal dari daerah?", options: ["Jawa Tengah", "Bali", "Sumatra Barat", "Kalimantan"], correct: 1 },
+    { category: "Seni & Budaya", question: "Lukisan Mona Lisa dibuat oleh?", options: ["Vincent van Gogh", "Pablo Picasso", "Leonardo da Vinci", "Claude Monet"], correct: 2 },
+    { category: "Seni & Budaya", question: "Batik ditetapkan UNESCO sebagai warisan budaya dunia pada tahun?", options: ["2003", "2009", "2013", "2016"], correct: 1 },
+    { category: "Seni & Budaya", question: "Wayang kulit merupakan seni pertunjukan tradisional yang menggunakan?", options: ["Boneka kain", "Bayangan dari kulit", "Topeng kayu", "Kostum warna-warni"], correct: 1 },
+    { category: "Seni & Budaya", question: "Rumah adat 'Tongkonan' berasal dari suku?", options: ["Toraja", "Batak", "Dayak", "Minangkabau"], correct: 0 },
+
+    // ---------- Bahasa & Umum ----------
+    { category: "Bahasa & Umum", question: "Kata 'pulau' dalam Bahasa Inggris adalah?", options: ["Island", "Coast", "Ocean", "Beach"], correct: 0 },
+    { category: "Bahasa & Umum", question: "Bahasa resmi yang digunakan di Brasil adalah?", options: ["Spanyol", "Portugis", "Prancis", "Italia"], correct: 1 },
+    { category: "Bahasa & Umum", question: "Mata uang resmi Jepang adalah?", options: ["Won", "Yuan", "Yen", "Ringgit"], correct: 2 },
+    { category: "Bahasa & Umum", question: "Hari kemerdekaan Amerika Serikat dirayakan setiap tanggal?", options: ["4 Juli", "14 Juli", "1 Agustus", "26 Januari"], correct: 0 },
+    { category: "Bahasa & Umum", question: "Julukan 'Negeri Sakura' merujuk pada negara?", options: ["Korea Selatan", "Tiongkok", "Jepang", "Thailand"], correct: 2 },
+    { category: "Bahasa & Umum", question: "Simbol matematika '∞' melambangkan?", options: ["Nol", "Tak terhingga", "Pi", "Akar kuadrat"], correct: 1 }
+  ];
+
+  const TOTAL_QUESTIONS = 10;
+  const TIME_PER_QUESTION = 15; // detik
+  const STORAGE_KEY = "neonTrivia_highScore";
+
+  /* ---------------- State ---------------- */
+  let quizQuestions = [];
+  let currentIndex = 0;
+  let score = 0;
+  let answered = false;
+  let timerInterval = null;
+  let timeLeft = TIME_PER_QUESTION;
+  let userAnswers = []; // { correct: bool }
+
+  /* ---------------- DOM refs ---------------- */
+  const screens = {
+    start: document.getElementById("screen-start"),
+    quiz: document.getElementById("screen-quiz"),
+    result: document.getElementById("screen-result")
+  };
+
+  const startBtn = document.getElementById("startBtn");
+  const restartBtn = document.getElementById("restartBtn");
+  const highScoreDisplay = document.getElementById("highScoreDisplay");
+
+  const qCounter = document.getElementById("qCounter");
+  const qScore = document.getElementById("qScore");
+  const progressFill = document.getElementById("progressFill");
+  const timerFill = document.getElementById("timerFill");
+  const categoryTag = document.getElementById("categoryTag");
+  const questionText = document.getElementById("questionText");
+  const answersContainer = document.getElementById("answersContainer");
+
+  const finalScore = document.getElementById("finalScore");
+  const resultMsg = document.getElementById("resultMsg");
+  const resultEmoji = document.getElementById("resultEmoji");
+  const newBestBadge = document.getElementById("newBestBadge");
+  const breakdown = document.getElementById("breakdown");
+
+  const modeToggle = document.getElementById("modeToggle");
+
+  /* ---------------- Util ---------------- */
+  function shuffle(arr){
+    const a = arr.slice();
+    for(let i = a.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function getHighScore(){
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const n = raw === null ? 0 : parseInt(raw, 10);
+    return Number.isNaN(n) ? 0 : n;
+  }
+
+  function setHighScore(n){
+    localStorage.setItem(STORAGE_KEY, String(n));
+  }
+
+  function showScreen(name){
+    Object.keys(screens).forEach(function(key){
+      screens[key].classList.toggle("active", key === name);
+    });
+  }
+
+  /* ---------------- Render start screen ---------------- */
+  function renderHighScore(){
+    highScoreDisplay.textContent = getHighScore() + " / " + TOTAL_QUESTIONS;
+  }
+
+  /* ---------------- Quiz flow ---------------- */
+  function startQuiz(){
+    quizQuestions = shuffle(QUESTION_BANK).slice(0, TOTAL_QUESTIONS);
+    currentIndex = 0;
+    score = 0;
+    userAnswers = [];
+    showScreen("quiz");
+    renderQuestion();
+  }
+
+  function renderQuestion(){
+    answered = false;
+    const q = quizQuestions[currentIndex];
+
+    // header + progress
+    qCounter.textContent = "Soal " + (currentIndex + 1) + " / " + quizQuestions.length;
+    qScore.textContent = "Skor: " + score;
+    const pct = (currentIndex / quizQuestions.length) * 100;
+    progressFill.style.width = pct + "%";
+
+    // category
+    categoryTag.textContent = q.category;
+
+    // question text — built with createElement / textContent
+    questionText.textContent = q.question;
+
+    // clear previous answers
+    while(answersContainer.firstChild){
+      answersContainer.removeChild(answersContainer.firstChild);
+    }
+
+    // build option order (shuffled), remember which shuffled index is correct
+    const optionOrder = shuffle(q.options.map(function(text, idx){ return { text: text, isCorrect: idx === q.correct }; }));
+
+    optionOrder.forEach(function(opt, i){
+      const btn = document.createElement("button");
+      btn.className = "answer-btn";
+      btn.setAttribute("data-correct", opt.isCorrect ? "true" : "false");
+      btn.setAttribute("type", "button");
+
+      const letter = document.createElement("span");
+      letter.className = "letter";
+      letter.textContent = String.fromCharCode(65 + i); // A, B, C, D
+
+      const label = document.createElement("span");
+      label.className = "label-text";
+      label.textContent = opt.text;
+
+      btn.appendChild(letter);
+      btn.appendChild(label);
+      answersContainer.appendChild(btn);
+    });
+
+    startTimer();
+  }
+
+  function startTimer(){
+    clearInterval(timerInterval);
+    timeLeft = TIME_PER_QUESTION;
+    timerFill.style.transition = "none";
+    timerFill.style.width = "100%";
+    // force reflow so the transition re-applies cleanly
+    void timerFill.offsetWidth;
+    timerFill.style.transition = "width 1s linear";
+
+    timerInterval = setInterval(function(){
+      timeLeft -= 1;
+      const pct = Math.max(0, (timeLeft / TIME_PER_QUESTION) * 100);
+      timerFill.style.width = pct + "%";
+      if(timeLeft <= 0){
+        clearInterval(timerInterval);
+        if(!answered){
+          handleAnswer(null); // waktu habis = tidak jawab / salah
+        }
+      }
+    }, 1000);
+  }
+
+  /* Event delegation: satu listener untuk semua tombol jawaban */
+  answersContainer.addEventListener("click", function(e){
+    const btn = e.target.closest(".answer-btn");
+    if(!btn || answered) return;
+    handleAnswer(btn);
+  });
+
+  function handleAnswer(selectedBtn){
+    answered = true;
+    clearInterval(timerInterval);
+
+    const allBtns = answersContainer.querySelectorAll(".answer-btn");
+    let wasCorrect = false;
+
+    allBtns.forEach(function(btn){
+      btn.disabled = true;
+      const isCorrectAnswer = btn.getAttribute("data-correct") === "true";
+
+      if(isCorrectAnswer){
+        btn.classList.add("correct");
+      }
+      if(selectedBtn && btn === selectedBtn && !isCorrectAnswer){
+        btn.classList.add("wrong");
+      }
+      if(selectedBtn && btn === selectedBtn && isCorrectAnswer){
+        wasCorrect = true;
+      }
+    });
+
+    if(wasCorrect) score += 1;
+    userAnswers.push({ correct: wasCorrect, question: quizQuestions[currentIndex].question });
+
+    qScore.textContent = "Skor: " + score;
+
+    setTimeout(function(){
+      currentIndex += 1;
+      if(currentIndex < quizQuestions.length){
+        renderQuestion();
+      } else {
+        finishQuiz();
+      }
+    }, 1100);
+  }
+
+  function finishQuiz(){
+    progressFill.style.width = "100%";
+    clearInterval(timerInterval);
+
+    const highScore = getHighScore();
+    const isNewBest = score > highScore;
+    if(isNewBest) setHighScore(score);
+
+    finalScore.textContent = score;
+
+    const pct = score / quizQuestions.length;
+    let emoji, msg;
+    if(pct === 1){ emoji = "🏆"; msg = "Sempurna! Semua jawabanmu benar."; }
+    else if(pct >= 0.75){ emoji = "🔥"; msg = "Keren, wawasanmu di atas rata-rata!"; }
+    else if(pct >= 0.5){ emoji = "🙂"; msg = "Lumayan, masih ada ruang buat belajar lagi."; }
+    else { emoji = "🌱"; msg = "Jangan menyerah, coba lagi yuk!"; }
+
+    resultEmoji.textContent = emoji;
+    resultMsg.textContent = msg;
+    newBestBadge.style.display = isNewBest ? "inline-block" : "none";
+
+    // breakdown list — dibangun dengan createElement / textContent
+    while(breakdown.firstChild){
+      breakdown.removeChild(breakdown.firstChild);
+    }
+    userAnswers.forEach(function(item, idx){
+      const row = document.createElement("div");
+      row.className = "breakdown-item";
+
+      const tick = document.createElement("span");
+      tick.className = "tick " + (item.correct ? "ok" : "no");
+      tick.textContent = item.correct ? "✓" : "✕";
+
+      const text = document.createElement("span");
+      text.textContent = (idx + 1) + ". " + item.question;
+
+      row.appendChild(tick);
+      row.appendChild(text);
+      breakdown.appendChild(row);
+    });
+
+    renderHighScore();
+    showScreen("result");
+  }
+
+  /* ---------------- Restart / navigasi tanpa reload ---------------- */
+  startBtn.addEventListener("click", startQuiz);
+  restartBtn.addEventListener("click", startQuiz);
+
+  /* ---------------- Dark/Light toggle (bonus) ---------------- */
+  modeToggle.addEventListener("click", function(){
+    document.body.classList.toggle("light");
+    modeToggle.textContent = document.body.classList.contains("light") ? "☀️" : "🌙";
+  });
+
+  /* ---------------- Init ---------------- */
+  renderHighScore();
+})();
+</script>
+
+</body>
+</html>
